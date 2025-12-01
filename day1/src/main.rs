@@ -1,0 +1,48 @@
+fn main() {
+    let inp = std::fs::read_to_string("input.txt").unwrap();
+    println!("answer: {}", run(&inp));
+}
+
+fn parse(inp: &str) -> impl Iterator<Item = i32> + '_ {
+    inp.split('\n')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| {
+            let (dir, cnt) = s.split_at(1);
+            let cnt: i32 = cnt.parse().unwrap();
+            match dir {
+                "L" => -cnt,
+                "R" => cnt,
+                other => panic!("unexpected: {other}"),
+            }
+        })
+}
+
+fn run(inp: &str) -> usize {
+    let mut dial = 50;
+    let mut ans = 0;
+    for cnt in parse(inp) {
+        dial = (dial + cnt).rem_euclid(100);
+        if dial == 0 {
+            ans += 1;
+        }
+    }
+    ans
+}
+
+#[test]
+fn example() {
+    let inp = "
+        L68
+        L30
+        R48
+        L5
+        R60
+        L55
+        L1
+        L99
+        R14
+        L82
+    ";
+    assert_eq!(run(inp), 3);
+}
