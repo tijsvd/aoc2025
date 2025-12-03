@@ -92,25 +92,16 @@ fn run_3(inp: &str, n_digits: usize) -> u64 {
 struct State<const N: usize> {
     outcomes: [u64; N],
     answer: u64,
-    position: usize,
-    done: bool,
 }
 
 fn initialize<const N: usize>() -> State<N> {
     State {
         outcomes: [0; N],
         answer: 0,
-        position: 0,
-        // if input is empty, we're done, but tick() is written defensively
-        done: false,
     }
 }
 
-fn tick<const N: usize>(state: State<N>, inp: &str) -> State<N> {
-    let inp = inp.as_bytes();
-    let c = inp.get(state.position).copied().unwrap_or(0);
-    let position = state.position + 1;
-    let done = position >= inp.len();
+fn tick<const N: usize>(state: State<N>, c: u8) -> State<N> {
     let is_nl = c == b'\n';
     let is_digit = c.is_ascii_digit();
     let c_val = if is_digit { (c - b'0') as u64 } else { 0 };
@@ -129,18 +120,13 @@ fn tick<const N: usize>(state: State<N>, inp: &str) -> State<N> {
             state.outcomes[i]
         }
     });
-    State {
-        answer,
-        outcomes,
-        position,
-        done,
-    }
+    State { answer, outcomes }
 }
 
 fn run_4<const N: usize>(inp: &str) -> u64 {
     let mut state = initialize::<N>();
-    while !state.done {
-        state = tick(state, inp);
+    for &c in inp.as_bytes() {
+        state = tick(state, c);
     }
     state.answer
 }
