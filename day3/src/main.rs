@@ -37,7 +37,7 @@ fn max_j_2(bank: &[u8], n_digits: usize) -> u64 {
     // state[i] = n -> the maximum outcome so far for i digits is n
     let mut states = vec![0u64; n_digits + 1];
     for &c in bank {
-        // reverse otherwise we're overwriting newly calculated values
+        // reverse otherwise we're reading back newly calculated values
         for i in (1..=n_digits).rev() {
             // a state of len i may be formed by appending to state of len (i-1)
             let shorter = states[i - 1];
