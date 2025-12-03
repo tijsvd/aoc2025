@@ -58,6 +58,32 @@ fn run_2(inp: &str, n_digits: usize) -> u64 {
         .sum()
 }
 
+// this is the same as solution 2, not relying on input being in memory at all
+#[allow(unused)]
+fn run_3(inp: impl IntoIterator<Item = u8>, n_digits: usize) -> u64 {
+    let mut outcomes = vec![0u64; n_digits + 1];
+    let mut answer = 0;
+    for c in inp {
+        if c == b'\n' {
+            answer += outcomes[n_digits];
+            outcomes.fill(0);
+            continue;
+        }
+        if !c.is_ascii_digit() {
+            continue;
+        }
+        let c = c - b'0';
+        for i in (1..=n_digits).rev() {
+            let nw = outcomes[i - 1] * 10 + c as u64;
+            let tgt = &mut outcomes[i];
+            if nw > *tgt {
+                *tgt = nw;
+            }
+        }
+    }
+    answer
+}
+
 #[test]
 fn example() {
     let inp = "
@@ -71,4 +97,7 @@ fn example() {
 
     assert_eq!(run_2(inp, 2), 357);
     assert_eq!(run_2(inp, 12), 3121910778619);
+
+    assert_eq!(run_3(inp.as_bytes().iter().copied(), 2), 357);
+    assert_eq!(run_3(inp.as_bytes().iter().copied(), 12), 3121910778619);
 }
