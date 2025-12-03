@@ -104,7 +104,7 @@ fn initialize<const N: usize>() -> State<N> {
 fn tick<const N: usize>(state: State<N>, c: u8) -> State<N> {
     let is_nl = c == b'\n';
     let is_digit = c.is_ascii_digit();
-    let c_val = if is_digit { (c - b'0') as u64 } else { 0 };
+    let c_val = c.wrapping_sub(b'0') as u64;
     let answer = if is_nl {
         state.answer + state.outcomes[N - 1]
     } else {
@@ -117,6 +117,7 @@ fn tick<const N: usize>(state: State<N>, c: u8) -> State<N> {
             let prev = if i == 0 { 0 } else { state.outcomes[i - 1] };
             std::cmp::max(state.outcomes[i], prev * 10 + c_val)
         } else {
+            // branch not needed for actual input, only for tests with padding
             state.outcomes[i]
         }
     });
