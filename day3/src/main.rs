@@ -2,8 +2,7 @@ fn main() {
     let inp = std::io::read_to_string(std::io::stdin()).unwrap();
     println!("solution 1: {} {}", run(&inp, 2), run(&inp, 12));
     println!("solution 2: {} {}", run_2(&inp, 2), run_2(&inp, 12));
-    println!("solution 3: {} {}", run_3(&inp, 2), run_3(&inp, 12));
-    println!("solution 4: {} {}", run_4::<2>(&inp), run_4::<12>(&inp));
+    println!("solution 3: {} {}", run_3::<2>(&inp), run_3::<12>(&inp));
 }
 
 // solution 1 -- figure out the best next digit, one by one
@@ -60,76 +59,30 @@ fn run_2(inp: &str, n_digits: usize) -> u64 {
         .sum()
 }
 
-// this is the same as solution 2, not relying on input being in memory at all
+// this is the same as solution 2, not relying on input being in memory at all,
+// and purely functional (should be easily portable to vhdl / verilog)
 #[allow(unused)]
-fn run_3(inp: &str, n_digits: usize) -> u64 {
+fn run_3<const N: usize>(inp: &str) -> u64 {
     let inp = inp.as_bytes().iter().copied();
-    let mut outcomes = vec![0u64; n_digits];
+    let mut outcomes = [0u64; N];
     let mut answer = 0;
     for c in inp {
-        if c == b'\n' {
-            answer += outcomes[n_digits - 1];
-            outcomes.fill(0);
-            continue;
-        }
-        if !c.is_ascii_digit() {
-            continue;
-        }
-        let c = c - b'0';
-        for i in (0..n_digits).rev() {
-            let prev = if i == 0 { 0 } else { outcomes[i - 1] };
-            let nw = prev * 10 + c as u64;
-            let tgt = &mut outcomes[i];
-            if nw > *tgt {
-                *tgt = nw;
-            }
-        }
+        (answer, outcomes) = if c == b'\n' {
+            (answer + outcomes[N - 1], [0; N])
+        } else if c.is_ascii_digit() {
+            let c = (c - b'0') as u64;
+            (
+                answer,
+                std::array::from_fn(|i| {
+                    let prev = if i == 0 { 0 } else { outcomes[i - 1] };
+                    outcomes[i].max(prev * 10 + c)
+                }),
+            )
+        } else {
+            (answer, outcomes)
+        };
     }
     answer
-}
-
-// same solution ready for fpga (purely functional)
-struct State<const N: usize> {
-    outcomes: [u64; N],
-    answer: u64,
-}
-
-fn initialize<const N: usize>() -> State<N> {
-    State {
-        outcomes: [0; N],
-        answer: 0,
-    }
-}
-
-fn tick<const N: usize>(state: State<N>, c: u8) -> State<N> {
-    let is_nl = c == b'\n';
-    let is_digit = c.is_ascii_digit();
-    let c_val = c.wrapping_sub(b'0') as u64;
-    let answer = if is_nl {
-        state.answer + state.outcomes[N - 1]
-    } else {
-        state.answer
-    };
-    let outcomes = std::array::from_fn(|i| {
-        if is_nl {
-            0
-        } else if is_digit {
-            let prev = if i == 0 { 0 } else { state.outcomes[i - 1] };
-            std::cmp::max(state.outcomes[i], prev * 10 + c_val)
-        } else {
-            // branch not needed for actual input, only for tests with padding
-            state.outcomes[i]
-        }
-    });
-    State { answer, outcomes }
-}
-
-fn run_4<const N: usize>(inp: &str) -> u64 {
-    let mut state = initialize::<N>();
-    for &c in inp.as_bytes() {
-        state = tick(state, c);
-    }
-    state.answer
 }
 
 #[test]
@@ -146,9 +99,6 @@ fn example() {
     assert_eq!(run_2(inp, 2), 357);
     assert_eq!(run_2(inp, 12), 3121910778619);
 
-    assert_eq!(run_3(inp, 2), 357);
-    assert_eq!(run_3(inp, 12), 3121910778619);
-
-    assert_eq!(run_4::<2>(inp), 357);
-    assert_eq!(run_4::<12>(inp), 3121910778619);
+    assert_eq!(run_3::<2>(inp), 357);
+    assert_eq!(run_3::<12>(inp), 3121910778619);
 }
