@@ -1,6 +1,7 @@
 fn main() {
     let inp = std::io::read_to_string(std::io::stdin()).unwrap();
     println!("answer: {}", run(&inp));
+    println!("answer 2: {}", run2(&inp));
 }
 
 fn parse(inp: &str) -> (Vec<std::ops::RangeInclusive<u64>>, Vec<u64>) {
@@ -34,6 +35,32 @@ fn run(inp: &str) -> usize {
         .count()
 }
 
+fn run2(inp: &str) -> u64 {
+    let (ranges, _) = parse(inp);
+    let mut ranges = ranges
+        .into_iter()
+        .map(|r| (*r.start(), *r.end() + 1))
+        .collect::<Vec<_>>();
+    ranges.sort_unstable();
+    let mut i = 0;
+    while i < ranges.len() {
+        let ((_, i_end), rest) = ranges[i..].split_first_mut().unwrap();
+        let n_rm = rest
+            .iter()
+            .position(|&(j_start, j_end)| {
+                if j_start > *i_end {
+                    return true;
+                }
+                *i_end = (*i_end).max(j_end);
+                false
+            })
+            .unwrap_or(rest.len());
+        ranges.drain(i + 1..i + 1 + n_rm);
+        i += 1;
+    }
+    ranges.into_iter().map(|(start, end)| end - start).sum()
+}
+
 #[test]
 fn example() {
     let inp = "
@@ -50,4 +77,5 @@ fn example() {
         32
     ";
     assert_eq!(run(inp), 3);
+    assert_eq!(run2(inp), 14);
 }
