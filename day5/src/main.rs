@@ -4,7 +4,7 @@ fn main() {
     println!("answer 2: {}", run2(&inp));
 }
 
-fn parse(inp: &str) -> (Vec<std::ops::RangeInclusive<u64>>, Vec<u64>) {
+fn parse(inp: &str) -> (Vec<(u64, u64)>, Vec<u64>) {
     let mut ranges = vec![];
     let mut lines = inp.split('\n').map(|line| line.trim());
     for line in lines.by_ref() {
@@ -19,7 +19,7 @@ fn parse(inp: &str) -> (Vec<std::ops::RangeInclusive<u64>>, Vec<u64>) {
         let (start, end) = line.split_once('-').unwrap();
         let start: u64 = start.parse().unwrap();
         let end: u64 = end.parse().unwrap();
-        ranges.push(start..=end);
+        ranges.push((start, end + 1));
     }
     let ids = lines
         .filter(|s| !s.is_empty())
@@ -31,16 +31,16 @@ fn parse(inp: &str) -> (Vec<std::ops::RangeInclusive<u64>>, Vec<u64>) {
 fn run(inp: &str) -> usize {
     let (ranges, ids) = parse(inp);
     ids.iter()
-        .filter(|&&id| ranges.iter().any(|range| range.contains(&id)))
+        .filter(|&&id| {
+            ranges
+                .iter()
+                .any(|&(start, end)| (start..end).contains(&id))
+        })
         .count()
 }
 
 fn run2(inp: &str) -> u64 {
-    let (ranges, _) = parse(inp);
-    let mut ranges = ranges
-        .into_iter()
-        .map(|r| (*r.start(), *r.end() + 1))
-        .collect::<Vec<_>>();
+    let (mut ranges, _) = parse(inp);
     ranges.sort_unstable();
     let mut i = 0;
     while i < ranges.len() {
