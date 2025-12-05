@@ -43,22 +43,26 @@ fn run2(inp: &str) -> u64 {
     let (mut ranges, _) = parse(inp);
     ranges.sort_unstable();
     let mut i = 0;
+    let mut consolidated = vec![];
     while i < ranges.len() {
-        let ((_, i_end), rest) = ranges[i..].split_first_mut().unwrap();
-        let n_rm = rest
+        let (i_start, mut i_end) = ranges[i];
+        let n_overlap = ranges[i + 1..]
             .iter()
             .take_while(|&&(j_start, j_end)| {
-                if j_start > *i_end {
+                if j_start > i_end {
                     return false;
                 }
-                *i_end = (*i_end).max(j_end);
+                i_end = i_end.max(j_end);
                 true
             })
             .count();
-        ranges.drain(i + 1..i + 1 + n_rm);
-        i += 1;
+        consolidated.push((i_start, i_end));
+        i += n_overlap + 1;
     }
-    ranges.into_iter().map(|(start, end)| end - start).sum()
+    consolidated
+        .into_iter()
+        .map(|(start, end)| end - start)
+        .sum()
 }
 
 #[test]
