@@ -47,14 +47,14 @@ fn run2(inp: &str) -> u64 {
         let ((_, i_end), rest) = ranges[i..].split_first_mut().unwrap();
         let n_rm = rest
             .iter()
-            .position(|&(j_start, j_end)| {
+            .take_while(|&&(j_start, j_end)| {
                 if j_start > *i_end {
-                    return true;
+                    return false;
                 }
                 *i_end = (*i_end).max(j_end);
-                false
+                true
             })
-            .unwrap_or(rest.len());
+            .count();
         ranges.drain(i + 1..i + 1 + n_rm);
         i += 1;
     }
