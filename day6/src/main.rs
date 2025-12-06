@@ -36,12 +36,13 @@ fn run(inp: &str) -> u64 {
 }
 
 fn get_num(lines: &[&[u8]], i: usize) -> Option<u64> {
-    let digits = lines
+    lines
         .iter()
         .filter_map(|line| line.get(i).copied())
         .filter(|c| c.is_ascii_digit())
-        .collect::<Vec<_>>();
-    (!digits.is_empty()).then(|| std::str::from_utf8(&digits).unwrap().parse().unwrap())
+        .fold(None, |acc, c| {
+            Some(acc.unwrap_or(0) * 10 + (c - b'0') as u64)
+        })
 }
 
 fn run2(inp: &str) -> u64 {
