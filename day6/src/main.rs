@@ -21,15 +21,12 @@ fn run(inp: &str) -> u64 {
                 })
                 .sum();
         }
-        let vals: Vec<u64> = line
-            .split_whitespace()
-            .map(|s| s.parse().unwrap())
-            .collect();
+        let vals = line.split_whitespace().map(|s| s.parse::<u64>().unwrap());
         if sums.is_empty() {
-            sums = vals.clone();
-            prods = vals;
+            sums = vals.collect();
+            prods = sums.clone();
         } else {
-            for ((val, sum), prod) in vals.into_iter().zip(&mut sums).zip(&mut prods) {
+            for ((val, sum), prod) in vals.zip(&mut sums).zip(&mut prods) {
                 *sum += val;
                 *prod *= val;
             }
