@@ -1,7 +1,7 @@
 fn main() {
     let inp = std::io::read_to_string(std::io::stdin()).unwrap();
     println!("answer: {}", run(&inp));
-    println!("answer 2: {}", run2(&inp));
+    println!("answer 2: {} ?= {}", run2(&inp), run3(&inp));
 }
 
 fn run(inp: &str) -> u64 {
@@ -78,6 +78,54 @@ fn run2(inp: &str) -> u64 {
     total
 }
 
+// more text-oriented (slower) solution, transpose the entire input into
+// strings where each string is a column
+fn run3(inp: &str) -> u64 {
+    let lines = inp
+        .split('\n')
+        .filter(|s| !s.trim().is_empty())
+        .map(|s| s.as_bytes())
+        .collect::<Vec<_>>();
+    let n_cols = lines.iter().map(|line| line.len()).max().unwrap();
+    let mut transposed = (0..n_cols)
+        .map(|i| {
+            lines
+                .iter()
+                .map(|line| line.get(i).copied().unwrap_or(b' '))
+                .collect::<Vec<_>>()
+        })
+        .map(|v| std::str::from_utf8(&v).unwrap().trim().to_string());
+    let mut total = 0;
+    loop {
+        let Some(line) = transposed.next() else {
+            break;
+        };
+        if line.is_empty() {
+            continue;
+        }
+        let (line, op) = line.split_at(line.len() - 1);
+        let is_add = match op {
+            "+" => true,
+            "*" => false,
+            other => panic!("invalid op {other}"),
+        };
+        let mut val: u64 = line.trim().parse().unwrap();
+        for line in transposed.by_ref() {
+            if line.is_empty() {
+                break;
+            }
+            let num: u64 = line.parse().unwrap();
+            if is_add {
+                val += num;
+            } else {
+                val *= num;
+            }
+        }
+        total += val;
+    }
+    total
+}
+
 #[test]
 fn example() {
     let inp = "
@@ -88,4 +136,5 @@ fn example() {
     ";
     assert_eq!(run(inp), 4277556);
     assert_eq!(run2(inp), 3263827);
+    assert_eq!(run3(inp), 3263827);
 }
