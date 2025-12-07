@@ -21,6 +21,7 @@ fn parse(inp: &str) -> ((usize, usize), Splits) {
             if c == b'S' {
                 start = Some((y, x));
             } else if c == b'^' {
+                assert!(x > 0, "can't have split at edge");
                 splits.entry(y).or_default().insert(x);
             }
         }
