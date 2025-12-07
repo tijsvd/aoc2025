@@ -37,17 +37,16 @@ fn run(inp: &str) -> (usize, usize) {
         if y < start_y {
             continue;
         }
-        let mut nw_beams = HashMap::new();
-        for (x, cnt) in beams {
+        beams = beams.into_iter().fold(HashMap::new(), |mut m, (x, cnt)| {
             if split_xs.contains(&x) {
-                *nw_beams.entry(x - 1).or_default() += cnt;
-                *nw_beams.entry(x + 1).or_default() += cnt;
+                *m.entry(x - 1).or_default() += cnt;
+                *m.entry(x + 1).or_default() += cnt;
                 split_count += 1;
             } else {
-                *nw_beams.entry(x).or_default() += cnt;
+                *m.entry(x).or_default() += cnt;
             }
-        }
-        beams = nw_beams;
+            m
+        });
     }
     let n_beams = beams.into_values().sum();
     (split_count, n_beams)
