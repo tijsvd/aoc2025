@@ -6,7 +6,7 @@ fn main() {
     println!("answer 2: {:?}", run2(&inp));
 }
 
-type Coord = [u64; 3];
+type Coord = [i64; 3];
 
 fn parse(inp: &str) -> impl Iterator<Item = Coord> {
     inp.split('\n')
@@ -21,11 +21,8 @@ fn parse(inp: &str) -> impl Iterator<Item = Coord> {
         })
 }
 
-fn distance(p1: Coord, p2: Coord) -> u64 {
-    p1.into_iter()
-        .zip(p2)
-        .map(|(l, r)| (l as i64 - r as i64).pow(2) as u64)
-        .sum()
+fn distance(p1: Coord, p2: Coord) -> i64 {
+    p1.into_iter().zip(p2).map(|(l, r)| (l - r).pow(2)).sum()
 }
 
 fn find_connections(
@@ -75,7 +72,7 @@ fn run(inp: &str, n_conns: usize) -> usize {
     set_sizes.iter().copied().rev().take(3).product::<usize>()
 }
 
-fn run2(inp: &str) -> u64 {
+fn run2(inp: &str) -> i64 {
     let circuits = parse(inp).collect::<Vec<_>>();
     let mut dists = circuits
         .iter()
