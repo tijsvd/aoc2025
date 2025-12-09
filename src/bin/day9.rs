@@ -30,27 +30,27 @@ fn lines(corners: &[Point]) -> impl Iterator<Item = (Point, Point)> + '_ {
         .zip(corners.iter().copied().cycle().skip(1))
 }
 
+fn minmax<T: Ord>(p1: T, p2: T) -> (T, T) {
+    if p1 < p2 { (p1, p2) } else { (p2, p1) }
+}
+
 fn intersects(square: (Point, Point), line: (Point, Point)) -> bool {
     let ((x1, y1), (x2, y2)) = square;
-    let left = std::cmp::min(x1, x2);
-    let right = std::cmp::max(x1, x2);
-    let top = std::cmp::min(y1, y2);
-    let bottom = std::cmp::max(y1, y2);
+    let (left, right) = minmax(x1, x2);
+    let (top, bottom) = minmax(y1, y2);
     let ((x1, y1), (x2, y2)) = line;
     if x1 == x2 {
         if x1 <= left || x2 >= right {
             return false;
         }
-        let line_top = std::cmp::min(y1, y2);
-        let line_bottom = std::cmp::max(y1, y2);
+        let (line_top, line_bottom) = minmax(y1, y2);
         line_top < bottom && line_bottom > top
     } else {
         assert!(y1 == y2);
         if y1 <= top || y2 >= bottom {
             return false;
         }
-        let line_left = std::cmp::min(x1, x2);
-        let line_right = std::cmp::max(x1, x2);
+        let (line_left, line_right) = minmax(x1, x2);
         line_left < right && line_right > left
     }
 }
