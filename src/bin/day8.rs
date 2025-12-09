@@ -51,25 +51,25 @@ fn run(inp: &str, n_conns: usize) -> usize {
     let circuits = parse(inp).collect::<Vec<_>>();
     let conns = find_connections(circuits.iter().copied(), n_conns);
     let mut set_ids = (0..circuits.len()).collect::<Vec<_>>();
+    let mut sets = (0..circuits.len())
+        .map(|i| (i, vec![i]))
+        .collect::<HashMap<_, _>>();
     for (left, right) in conns {
-        let left_set = set_ids[left];
-        let right_set = set_ids[right];
-        // join right set to left set
-        for s in &mut set_ids {
-            if *s == right_set {
-                *s = left_set;
+        let left_set_id = set_ids[left];
+        let right_set_id = set_ids[right];
+        if left_set_id != right_set_id {
+            // join right set to left set
+            let right_set = sets.remove(&right_set_id).unwrap();
+            let left_set = sets.get_mut(&left_set_id).unwrap();
+            for c in right_set {
+                set_ids[c] = left_set_id;
+                left_set.push(c);
             }
         }
     }
-    let set_id_to_size = set_ids
-        .into_iter()
-        .fold(HashMap::<usize, usize>::new(), |mut h, sid| {
-            *h.entry(sid).or_default() += 1;
-            h
-        });
-    let mut set_sizes = set_id_to_size.into_values().collect::<Vec<_>>();
+    let mut set_sizes = sets.into_values().map(|set| set.len()).collect::<Vec<_>>();
     set_sizes.sort_unstable();
-    set_sizes.iter().copied().rev().take(3).product::<usize>()
+    set_sizes.into_iter().rev().take(3).product()
 }
 
 fn run2(inp: &str) -> i64 {
@@ -87,18 +87,22 @@ fn run2(inp: &str) -> i64 {
         .collect::<Vec<_>>();
     dists.sort_unstable();
     let mut set_ids = (0..circuits.len()).collect::<Vec<_>>();
+    let mut sets = (0..circuits.len())
+        .map(|i| (i, vec![i]))
+        .collect::<HashMap<_, _>>();
     for (_, left, right) in dists {
-        let left_set = set_ids[left];
-        let right_set = set_ids[right];
-        let mut single_set = true;
-        for s in &mut set_ids {
-            if *s == right_set {
-                *s = left_set;
-            } else if *s != left_set {
-                single_set = false;
-            }
+        let left_set_id = set_ids[left];
+        let right_set_id = set_ids[right];
+        if left_set_id == right_set_id {
+            continue;
         }
-        if single_set {
+        let right_set = sets.remove(&right_set_id).unwrap();
+        let left_set = sets.get_mut(&left_set_id).unwrap();
+        for c in right_set {
+            set_ids[c] = left_set_id;
+            left_set.push(c);
+        }
+        if sets.len() == 1 {
             return circuits[left][0] * circuits[right][0];
         }
     }
