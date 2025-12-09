@@ -16,15 +16,18 @@ fn parse(inp: &str) -> impl Iterator<Item = Point> + '_ {
         })
 }
 
-fn squares(corners: impl Iterator<Item = Point> + Clone) -> impl Iterator<Item = (Point, Point)> {
+fn squares(corners: &[Point]) -> impl Iterator<Item = (Point, Point)> + '_ {
     corners
-        .clone()
+        .iter()
         .enumerate()
-        .flat_map(move |(i, sq1)| corners.clone().skip(i + 1).map(move |sq2| (sq1, sq2)))
+        .flat_map(move |(i, &sq1)| corners.iter().skip(i + 1).map(move |&sq2| (sq1, sq2)))
 }
 
-fn lines(corners: impl Iterator<Item = Point> + Clone) -> impl Iterator<Item = (Point, Point)> {
-    corners.clone().zip(corners.cycle().skip(1))
+fn lines(corners: &[Point]) -> impl Iterator<Item = (Point, Point)> + '_ {
+    corners
+        .iter()
+        .copied()
+        .zip(corners.iter().copied().cycle().skip(1))
 }
 
 fn intersects(square: (Point, Point), line: (Point, Point)) -> bool {
@@ -61,13 +64,13 @@ fn area(square: (Point, Point)) -> u64 {
 
 fn run(inp: &str) -> u64 {
     let corners = parse(inp).collect::<Vec<_>>();
-    squares(corners.iter().copied()).map(area).max().unwrap()
+    squares(&corners).map(area).max().unwrap()
 }
 
 fn run2(inp: &str) -> u64 {
     let corners = parse(inp).collect::<Vec<_>>();
-    squares(corners.iter().copied())
-        .filter(|&sq| !lines(corners.iter().copied()).any(|line| intersects(sq, line)))
+    squares(&corners)
+        .filter(|&sq| !lines(&corners).any(|line| intersects(sq, line)))
         .map(area)
         .max()
         .unwrap()
