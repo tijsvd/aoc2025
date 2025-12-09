@@ -34,6 +34,8 @@ fn minmax<T: Ord>(p1: T, p2: T) -> (T, T) {
     if p1 < p2 { (p1, p2) } else { (p2, p1) }
 }
 
+// if a square intersects with any line (on the inside), then
+// it must at least be partially outside the polygon
 fn intersects(square: (Point, Point), line: (Point, Point)) -> bool {
     let ((x1, y1), (x2, y2)) = square;
     let (left, right) = minmax(x1, x2);
@@ -55,6 +57,33 @@ fn intersects(square: (Point, Point), line: (Point, Point)) -> bool {
     }
 }
 
+fn is_inside(square: (Point, Point), corners: &[Point]) -> bool {
+    // https://en.wikipedia.org/wiki/Nonzero-rule
+    //
+    // Note that I didn't actually need this for my input -- the shape
+    // is convex enough that the larger squares are inside.
+    let ((x1, y1), (x2, y2)) = square;
+    // midpoint
+    let x = (x1 + x2) / 2;
+    let y = (y1 + y2) / 2;
+    let cnt: i32 = lines(corners)
+        .filter(|&((_x1, y1), (_x2, y2))| {
+            // go up -- check only lines that are horizontal and above the midpoint
+            y1 == y2 && y1 < y
+        })
+        .map(|((x1, _y1), (x2, _y2))| {
+            if x1 < x && x2 > x {
+                -1
+            } else if x1 > x && x2 < x {
+                1
+            } else {
+                0
+            }
+        })
+        .sum();
+    cnt != 0
+}
+
 fn area(square: (Point, Point)) -> u64 {
     let ((x1, y1), (x2, y2)) = square;
     let dx = x1.abs_diff(x2) + 1;
@@ -71,6 +100,7 @@ fn run2(inp: &str) -> u64 {
     let corners = parse(inp).collect::<Vec<_>>();
     squares(&corners)
         .filter(|&sq| !lines(&corners).any(|line| intersects(sq, line)))
+        .filter(|&sq| is_inside(sq, &corners))
         .map(area)
         .max()
         .unwrap()
