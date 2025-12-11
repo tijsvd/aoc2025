@@ -1,12 +1,12 @@
 use regex::Regex;
-use std::cmp::Ordering;
-use arrayvec::ArrayVec;
-use std::collections::HashMap;
 
 fn main() {
     let inp = std::io::read_to_string(std::io::stdin()).unwrap();
-    assert!(parse(&inp)
-        .all(|machine| machine.joltage.len() < 16 && machine.joltage.into_iter().all(|j| j < 256)));
+    assert!(
+        parse(&inp)
+            .all(|machine| machine.joltage.len() < 16
+                && machine.joltage.into_iter().all(|j| j < 256))
+    );
     println!("answer: {:?}", run(&inp));
     println!("answer 2: {:?}", run2(&inp));
 }
@@ -55,9 +55,11 @@ fn parse(inp: &str) -> impl Iterator<Item = Machine> {
 fn min_toggles(machine: &Machine) -> u32 {
     // println!("checking {machine:?}");
     // since it's binary toggles, it never makes sense to toggle a button twice.
-    let buttons = machine.buttons.iter().map(|b| {
-        b.iter().fold(0u64, |a, i| a + (1 << i))
-    }).collect::<Vec<_>>();
+    let buttons = machine
+        .buttons
+        .iter()
+        .map(|b| b.iter().fold(0u64, |a, i| a + (1 << i)))
+        .collect::<Vec<_>>();
     (0..(1u32 << buttons.len() as u32))
         .filter(|p| {
             let result = buttons
@@ -77,222 +79,140 @@ fn run(inp: &str) -> u32 {
     parse(inp).map(|machine| min_toggles(&machine)).sum()
 }
 
-fn gcd(mut a: u32, mut b: u32) -> u32 {
-    while b > 0 {
-        (a, b) = (b, a % b);
-    }
-    a
+fn leading_zeroes(line: &[i32]) -> usize {
+    line.iter().take_while(|&&i| i == 0).count()
 }
 
-type Jolts = ArrayVec<u32, 25>;
+fn reduce(matrix: &mut Vec<Vec<i32>>) {
+    // https://en.wikipedia.org/wiki/Gaussian_elimination
 
-fn shortest_path(
-    buttons: &[Vec<usize>],
-    jolts: &[u32],
-    related_buttons: &[Vec<usize>],
-    cache: &mut HashMap<Jolts, Option<u32>>,
-    stats: &mut (usize, usize, usize),
-) -> Option<u32> {
-    // println!("search {jolts:?}");
-    if jolts.iter().all(|&j| j == 0) {
-        stats.2 += 1;
-        return Some(0);
-    }
-    let d = jolts.iter().fold(0, |g, &j| gcd(g, j));
-    let mut jolts = jolts.iter().map(|&j| j / d).collect::<Jolts>();
-    // println!(" d={d} upd={jolts:?}");
-    if let Some(&ans) = cache.get(&jolts) {
-        // println!(" cached {ans:?}");
-        stats.0 += 1;
-        return ans.map(|c| c * d);
-    }
-    stats.1 += 1;
-
-    let mut ranges = std::iter::repeat_n((0u32, u32::MAX), buttons.len()).collect::<Ranges>();
-    optimize_ranges(&jolts, related_buttons, &mut ranges);
-    // println!("optimized ranges: {ranges:?}");
-
-    let mut cost = None;
-    for (button, &(min, max)) in buttons.iter().zip(&ranges) {
-        if min == 0 && max == 0 {
-            continue;
-        }
-        let n = min.max(1);
-        if button.iter().any(|&ndx| jolts[ndx] < n) {
-            continue;
-        }
-        for &ndx in button {
-            jolts[ndx] -= n;
-        }
-        if let Some(p) = shortest_path(buttons, &jolts, related_buttons, cache, stats) && cost.is_none_or(|c| p + n < c) {
-            cost = Some(p + n);
-        }
-        for &ndx in button {
-            jolts[ndx] += n;
-        }
-    }
-    // println!(" d={d} tgt={jolts:?} answ={cost:?}");
-    if cache.len().is_multiple_of(1000000) {
-        let (hits, misses, sols) = *stats;
-        println!("cache {} @ {jolts:?} hits={hits} misses={misses} sols={sols}", cache.len());
-    }
-    cache.insert(jolts, cost);
-    cost.map(|c| c * d)
-}
-
-type Ranges = ArrayVec<(u32, u32), 25>;
-
-fn get_related_buttons(machine: &Machine) -> Vec<Vec<usize>> {
-    (0..machine.joltage.len())
-        .map(|i| {
-            machine
-                .buttons
-                .iter()
-                .enumerate()
-                .filter(|(_, b)| b.contains(&i))
-                .map(|(j, _)| j)
-                .collect()
-        })
-        .collect()
-}
-
-fn min_presses(machine: &Machine) -> u32 {
-    println!("searching {machine:?}");
-    let related_buttons = get_related_buttons(machine);
-    // let's optimise the search range -- e.g. if some joltage is affected only by one button,
-    // then we already know the exact number of presses, and doing this recursively can severely
-    // limit the search.
-    let mut button_ranges = std::iter::repeat_n((0u32, u32::MAX), machine.buttons.len()).collect::<Ranges>();
-    optimize_ranges(&machine.joltage, &related_buttons, &mut button_ranges);
-    println!("ranges optimised: {button_ranges:?}");
-    let mut presses = vec![0; button_ranges.len()];
-    let mut min_presses = u32::MAX;
-    search(
-        &machine.joltage, &related_buttons,
-        &button_ranges,
-        &mut presses,
-        0,
-        &mut min_presses,
-    );
-    assert!(min_presses < u32::MAX);
-    min_presses
-}
-
-fn optimize_ranges(
-    joltage: &[u32],
-    related_buttons: &[Vec<usize>],
-    button_ranges: &mut [(u32, u32)],
-) {
     loop {
-        let mut updated = false;
-        // println!("optimizing {button_ranges:?} {joltage_affected:?}");
-        for (&tgt_j, buttons) in std::iter::zip(joltage, related_buttons) {
-            for &b in buttons {
-                let (current_min, current_max) = button_ranges[b];
-                if current_min == current_max {
-                    continue;
-                }
-                let (min_ex, max_ex) = buttons
-                    .iter()
-                    .copied()
-                    .filter(|&other_button| other_button != b)
-                    .map(|ndx| button_ranges[ndx])
-                    .fold((0u32, 0u32), |(min, max), (bmin, bmax)| {
-                        (min + bmin, max.saturating_add(bmax))
-                    });
-                let (current_min, current_max) = button_ranges[b];
-                // println!(" tgt={tgt_j} button {b} ex=({min_ex}, {max_ex}) current=({current_min}, {current_max})");
-                // if the other buttons add up to at least x, then we can't press this button more than
-                // tgt_j - x
-                // and if this_max is now < 0, it means that no solution is possible
-                let this_max = tgt_j.saturating_sub(min_ex);
-                if this_max < current_max {
-                    button_ranges[b].1 = this_max;
-                    // println!(" changed max to {this_max} {button_ranges:?}");
-                    updated = true;
-                }
-                // if the other buttons add up to at most x, then we must press this button at least tgt_j - x
-                let this_min = tgt_j.saturating_sub(max_ex);
-                if this_min > current_min {
-                    button_ranges[b].0 = this_min;
-                    // println!(" changed min to {this_min} {button_ranges:?}");
-                    updated = true;
-                }
+        let mut changed = false;
+
+        // more leading zeroes on top
+        matrix.sort_unstable_by_key(|line| std::cmp::Reverse(leading_zeroes(line)));
+        for i in 0..matrix.len() - 1 {
+            let (row1, rest) = matrix[i..].split_first_mut().unwrap();
+            let row2 = &rest[0];
+            let lz1 = leading_zeroes(row1);
+            let lz2 = leading_zeroes(row2);
+            if lz1 > lz2 || lz1 == row1.len() {
+                continue;
             }
+            debug_assert_eq!(lz1, lz2);
+            let ndx = lz1;
+            let c1 = row1[ndx];
+            let c2 = row2[ndx];
+            for (v1, &v2) in std::iter::zip(row1, row2) {
+                *v1 = (*v1 * c2) - (v2 * c1);
+            }
+            debug_assert_eq!(matrix[i][ndx], 0);
+            changed = true;
         }
-        if !updated {
+        if !changed {
             break;
         }
     }
+    matrix.retain(|row| row.iter().any(|&v| v != 0));
 }
 
-fn search(
-    joltage: &[u32],
-    related_buttons: &[Vec<usize>],
-    ranges: &Ranges,
-    presses: &mut [u32],
-    i: usize,
-    min: &mut u32,
-) {
-    if i >= presses.len() {
-        return;
-    }
-    /*
-    if i < 2 {
-        println!("searching i={i} ranges={ranges:?} {presses:?}");
-    }
-    */
-    let (min_p, max_p) = ranges[i];
-    for c in min_p..=max_p {
-        // println!("try i={i} c={c} {ranges:?} {presses:?}");
-        presses[i] = c;
-        let total = presses.iter().copied().sum();
-        if total >= *min {
-            break;
+fn solve_subst_matrix(matrix: &[Vec<i32>]) -> Result<u32, ()> {
+    // println!("solving {matrix:?}");
+    let nvars = matrix.len();
+    assert_eq!(matrix[0].len(), nvars + 1);
+    let mut vars = vec![0u32; nvars];
+    for (i, row) in matrix.iter().enumerate() {
+        let ndx = nvars - i - 1;
+        assert_eq!(leading_zeroes(row), ndx);
+        let n = row[nvars]
+            - (ndx + 1..nvars)
+                .map(|j| vars[j] as i32 * row[j])
+                .sum::<i32>();
+        let d = row[ndx];
+        if d < 0 && n > 0 || d > 0 && n < 0 {
+            // println!("ndx={ndx} d = {d} n={n} bad");
+            return Err(());
         }
-        match presses_result(joltage, related_buttons, presses) {
-            Ordering::Greater => break,
-            Ordering::Less => {
-                let mut ranges = ranges.clone();
-                ranges[i] = (c, c);
-                optimize_ranges(joltage, related_buttons, &mut ranges);
-                search(joltage, related_buttons, &ranges, presses, i + 1, min);
-            }
-            Ordering::Equal => {
-                println!("solved {presses:?}");
-                *min = total;
-                break;
-            }
+        let n = n.unsigned_abs();
+        let d = d.unsigned_abs();
+        if !n.is_multiple_of(d) {
+            // println!("ndx={ndx} n={n} d={d} not integer");
+            return Err(());
         }
+        // println!(" ndx={ndx} n={n} d={d} v={}", n/d);
+        vars[ndx] = n / d;
     }
-    presses[i] = 0;
-    // println!("done i={i} {ranges:?} {presses:?}");
+    // println!("done vars={vars:?}");
+    let cost = vars.iter().copied().sum();
+    Ok(cost)
 }
 
-fn presses_result(joltage: &[u32], related_buttons: &[Vec<usize>], presses: &[u32]) -> Ordering {
-    let mut all_eq = true;
-    for (&tgt_j, buttons) in std::iter::zip(joltage, related_buttons) {
-        let sum: u32 = buttons.iter().map(|&b| presses[b]).sum();
-        if sum > tgt_j {
-            return Ordering::Greater;
-        }
-        if sum != tgt_j {
-            all_eq = false;
+fn search_matrix(matrix: &[Vec<i32>], max_p: u32, _depth: usize) -> Option<u32> {
+    assert!(_depth <= matrix[0].len());
+    let mut matrix = matrix.to_vec();
+    //println!("search d={_depth} (original): {matrix:?}");
+    reduce(&mut matrix);
+    // println!("search d={_depth} (reduced): {matrix:?}");
+    if matrix
+        .iter()
+        .any(|row| leading_zeroes(row) == row.len() - 1)
+    {
+        // println!("  -> invalid");
+        // 0 = x
+        return None;
+    }
+    if matrix.len() == matrix[0].len() - 1 {
+        // println!("  -> solvable");
+        // fully solveable
+        return solve_subst_matrix(&matrix).ok();
+    }
+    // ok we'll have to do some actual searching
+    let (_i, row) = matrix
+        .iter()
+        .enumerate()
+        .find(|&(i, row)| leading_zeroes(row) < row.len() - i - 2)
+        .unwrap();
+    let var_ndx = leading_zeroes(row) + 1;
+    // FIXME can we determine min/max from the matrix? I think we can, but let's not for now
+    let mut extra_row = vec![0; matrix[0].len()];
+    extra_row[var_ndx] = 1i32;
+    matrix.push(extra_row);
+    let mut ans = None;
+    // println!("  -> search ndx={var_ndx}");
+    for v in 0..max_p {
+        *matrix.last_mut().unwrap().last_mut().unwrap() = v as i32;
+        if let Some(p) = search_matrix(&matrix, max_p, _depth + 1)
+            && ans.is_none_or(|m| p < m)
+        {
+            ans = Some(p);
         }
     }
-    if all_eq {
-        Ordering::Equal
-    } else {
-        Ordering::Less
-    }
+    ans
 }
 
 fn run2(inp: &str) -> u32 {
-    parse(inp).map(|machine| {
-        println!("searching {machine:?}");
-        shortest_path(&machine.buttons, &machine.joltage, &get_related_buttons(&machine), &mut Default::default(), &mut Default::default()).unwrap()
-        // min_presses(&machine)
-    }).sum()
+    parse(inp)
+        .map(|machine| {
+            println!("searching {machine:?}");
+            let matrix: Vec<Vec<i32>> = machine
+                .joltage
+                .iter()
+                .enumerate()
+                .map(|(i, &jlt)| {
+                    machine
+                        .buttons
+                        .iter()
+                        .map(|b| if b.contains(&i) { 1 } else { 0 })
+                        .chain(Some(jlt as i32))
+                        .collect()
+                })
+                .collect();
+            let max_p = machine.joltage.iter().copied().max().unwrap();
+            search_matrix(&matrix, max_p, 0).unwrap()
+            // shortest_path(&machine.buttons, &machine.joltage, &get_related_buttons(&machine), &mut Default::default(), &mut Default::default()).unwrap()
+            // min_presses(&machine)
+        })
+        .sum()
 }
 
 #[test]
