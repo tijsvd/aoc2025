@@ -179,7 +179,7 @@ fn search_matrix(matrix: &[Vec<i32>], max_p: u32, _depth: usize) -> Option<u32> 
     matrix.push(extra_row);
     let mut ans = None;
     // println!("  -> search ndx={var_ndx}");
-    for v in 0..max_p {
+    for v in 0..=max_p {
         *matrix.last_mut().unwrap().last_mut().unwrap() = v as i32;
         if let Some(p) = search_matrix(&matrix, max_p, _depth + 1)
             && ans.is_none_or(|m| p < m)
