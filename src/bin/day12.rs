@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 fn main() {
     let inp = std::io::read_to_string(std::io::stdin()).unwrap();
-    println!("answer: {:?}", run(&inp, true));
+    println!("answer: {:?}", run(&inp));
 }
 
 type Shape = [u8; 3];
@@ -52,9 +52,9 @@ fn parse(inp: &str) -> (Vec<Shape>, impl Iterator<Item = Puzzle>) {
     (shapes, puzzles)
 }
 
-fn run(inp: &str, hack: bool) -> usize {
+fn run(inp: &str) -> usize {
     let (shapes, puzzles) = parse(inp);
-    puzzles.filter(|p| can_solve(&shapes, p, hack)).count()
+    puzzles.filter(|p| can_solve(&shapes, p)).count()
 }
 
 fn rot1(shape: Shape) -> Shape {
@@ -90,20 +90,28 @@ fn transforms(mut shape: Shape) -> impl Iterator<Item = Shape> {
     })
 }
 
-fn can_solve(shapes: &[Shape], puzzle: &Puzzle, hack: bool) -> bool {
+fn can_solve(shapes: &[Shape], puzzle: &Puzzle) -> bool {
     println!("solving {puzzle:?}");
-    if hack {
-        puzzle.presents.len() <= (puzzle.wx as usize / 3 * puzzle.wy / 3)
-    } else {
-        let mut grid = vec![0; puzzle.wy];
-        search_placement(
-            &mut grid,
-            puzzle.wx,
-            shapes,
-            &puzzle.presents,
-            &mut Default::default(),
-        )
+    if puzzle.presents.len() <= (puzzle.wx as usize / 3 * puzzle.wy / 3) {
+        return true;
     }
+    if puzzle
+        .presents
+        .iter()
+        .map(|&p| shapes[p].into_iter().map(|l| l.count_ones()).sum::<u32>() as usize)
+        .sum::<usize>()
+        > puzzle.wx as usize * puzzle.wy
+    {
+        return false;
+    }
+    let mut grid = vec![0; puzzle.wy];
+    search_placement(
+        &mut grid,
+        puzzle.wx,
+        shapes,
+        &puzzle.presents,
+        &mut Default::default(),
+    )
 }
 
 fn search_placement(
@@ -186,5 +194,5 @@ fn example() {
 12x5: 1 0 1 0 2 2
 12x5: 1 0 1 0 3 2
     ";
-    assert_eq!(run(inp, false), 2);
+    assert_eq!(run(inp), 2);
 }
